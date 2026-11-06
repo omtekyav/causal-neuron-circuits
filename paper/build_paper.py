@@ -448,6 +448,10 @@ P("A group intervention that changes a model's answer tells us that the group ma
   "random-neuron control while carrying no content at all. Neuron groups are useful handles on model behaviour, but their "
   "internal structure has to be measured, not assumed.")
 
+H("Code and data")
+P("All code, the question sets, the saved results of every run reported here and the scripts that compute every number "
+  "and figure in this paper are available at https://github.com/omtekyav/causal-neuron-circuits (MIT license).")
+
 H("Acknowledgment")
 P("Generative AI tools were used for writing analysis code and for language editing. All experiments were run and all numbers "
   "were computed from saved result files by the author, who is responsible for the content.")
