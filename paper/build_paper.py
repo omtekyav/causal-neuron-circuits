@@ -164,7 +164,8 @@ P(
     "a model's answer, how much of that group is actually necessary?** For every selected group we measure all 4,096 subsets of "
     "12 MLP neurons. On a two-alternative capital task (Qwen3-0.6B), zero-ablating 12 selected neurons lowers the answer margin "
     f"by {s1['zero'][0]*100:.0f}% while random neurons do nothing, yet replacing the same neurons with their values from other "
-    "questions has no effect: the neurons carry an almost constant signal, not question-specific content. On two-hop relation "
+    "questions has no effect: their activations are nearly constant across questions, and we find no evidence that they "
+    "carry question-specific content. On two-hop relation "
     f"chains, patching 12 neurons with activations from the first-hop question shifts the answer to the bridge entity "
     f"(Scar → Simba) in {own['Qwen3-1.7B']['P_gen_bridge']}/{own['Qwen3-1.7B']['n']} chains for Qwen3-1.7B, "
     f"{own['Llama-3.2-1B']['P_gen_bridge']}/{own['Llama-3.2-1B']['n']} for Llama-3.2-1B and "
@@ -198,7 +199,7 @@ BUL([
     f"**Study 1 (capital questions, Qwen3-0.6B).** Twelve neurons selected by zero-ablation effect pass the usual random-neuron "
     f"control (−{s1['zero'][0]*100:.0f}% margin vs. ~0%), their effects are almost perfectly additive and they transfer to "
     "rephrasings and new questions. Yet replacing them with values from _other_ questions changes nothing. A group can look "
-    "causal, additive and transferable while carrying no question-specific content.",
+    "causal, additive and transferable without any evidence of question-specific content on the tested questions.",
     "**Study 2 (two-hop relation chains, Qwen3-1.7B, Llama-3.2-1B, Gemma-3-1B).** Patching 12 neurons with activations from "
     "the first-hop question reproduces the Scar → Simba shift in most chains of all three families, random neurons never do, "
     "and the effect is specific to the chain. Within the group, a few neurons usually suffice, and in many chains disjoint "
@@ -220,12 +221,22 @@ P("**Redundancy and self-repair.** Wang et al. found backup heads that take over
   "McGrath et al. described the Hydra effect, in which downstream layers compensate for ablated ones [7]. These results suggest "
   "that a single ablation can under- or over-state a component's role; our exhaustive subset analysis quantifies this for "
   "neuron groups.")
+P("**Non-uniqueness of explanations.** Méloux et al. showed, on small networks whose candidate explanations can be "
+  "enumerated, that mechanistic explanations are generally not identifiable: several circuits reproduce the same behaviour "
+  "and one circuit admits several interpretations [16]. Chen et al. found structurally different, faithful and sparse "
+  "circuits for the same task in large language models, including an ultra-sparse one in which no single edge is "
+  "indispensable [17]. Our results agree that sufficient neuron groups need not be unique, and add two things: an "
+  "exhaustive measurement of every subset of a selected neuron group in pre-trained models of three families, and the "
+  "observation that alternatives are common when the model is unsure of its answer and rare when it is confident.")
 P("**Choosing the intervention.** Zhang and Nanda showed that conclusions from activation patching depend on the corruption "
   "method and the metric [8], and attribution patching approximates patching effects with gradients [9]. Our Study 1 is a "
   "concrete instance of the first point: zero ablation and resampling disagree completely about the same neurons.")
 P("**Two-hop reasoning.** Language models often know both facts of a two-hop question yet fail to compose them (the "
   "compositionality gap [10]); whether and where they resolve the bridge entity internally has been studied with probing and "
-  "patching [11, 12]. We use two-hop chains because they give a natural, content-specific alternative answer (the bridge).")
+  "patching [11, 12]. Closest to our Study 2, Arora et al. traced circuits in the MLP-neuron basis and found that small "
+  "neuron sets encode intermediate steps of a multi-hop city–state–capital task and can be steered to change the output "
+  "[18]; we ask how much of such a set is necessary and whether disjoint parts of it can each do the job. We use two-hop "
+  "chains because they give a natural, content-specific alternative answer (the bridge).")
 
 # ---------------------------------------------------------------- 3
 H("3  Method")
@@ -257,7 +268,8 @@ P("For each frozen group we measure Δ(S) for all 2¹² = 4,096 subsets. From th
   "threshold Δ(S) ≥ m₀; (iv) **alternatives**: pairs of minimal sets that share no neuron; and (v) **transfer**, by applying the "
   "same frozen group to other prompts.")
 H("3.5  Controls, noise and procedure", 2)
-P("Every result is compared with 12 random neurons matched in layer counts and receiving the same intervention. Every batch "
+P("Every result is compared with 12 random neurons matched in layer counts and receiving the same intervention (one random "
+  "draw per question with a fixed seed; Study 1 also uses high-activation neurons with low estimated effect). Every batch "
   "of interventions contains an unmodified row, and Δ is computed against it. Study 1 runs in float32. Study 2 runs in bfloat16 "
   "because of GPU memory; there, we re-measured 30 subsets per chain with a different batch size and full (uncached) forward "
   "passes and report the maximum discrepancy as a noise floor "
@@ -267,7 +279,7 @@ P("Every result is compared with 12 random neurons matched in layer counts and r
   "bootstrap intervals over questions (chains), the unit of analysis.")
 
 # ---------------------------------------------------------------- 4
-H("4  Study 1: a causal-looking group without question-specific content")
+H("4  Study 1: a causal-looking group without evidence of question-specific content")
 P(f"**Setup.** Qwen3-0.6B answers {s1['n']} capital questions in a two-option format (“A. Paris / B. Stockholm”), with a "
   "three-example prompt. Candidates come from layers 14 and 21 and are selected by zero-ablation effect. A separate set of 10 "
   "questions is held out for testing.")
@@ -279,12 +291,13 @@ P(f"**The group passes the usual checks.** Zero-ablating all 12 neurons lowers t
   f"rephrasings correlate with the original at Spearman {s1['para_spearman_range'][0]:.2f}–{s1['para_spearman_range'][1]:.2f}. "
   f"The same neuron, (14, 692), is the strongest single neuron for all {s1['n']} questions, and remains so when the options are "
   f"swapped ({s1['top_still_top_swapped']}/{s1['n']}).")
-P("**But it carries no question-specific content.** Replacing the 12 neurons with their values from other capital questions "
+P("**But we find no evidence of question-specific content.** Replacing the 12 neurons with their values from other capital questions "
   f"leaves the answer unchanged (same correct letter: {ci(s1['resample_same'])}; other correct letter: "
   f"{ci(s1['resample_diff'])}; mean of other capital questions: {ci(s1['task_mean'])}; Figure 1). The activations are nearly "
   f"constant across questions: the median absolute deviation of a neuron from its across-question mean is "
-  f"{s1['act_dev_median']:.2f}, against a median magnitude of {s1['act_mag_median']:.2f}. Zero ablation removes a constant signal "
-  "that the answer depends on; it does not remove information about Paris.")
+  f"{s1['act_dev_median']:.2f}, against a median magnitude of {s1['act_mag_median']:.2f}. Zero ablation removes a nearly constant signal "
+  "that the answer depends on; within the tested questions we see no sign that it removes information about "
+  "Paris specifically.")
 P(f"**Replication on held-out questions.** Re-running the same selection procedure on the 10 test questions reproduces every "
   f"pattern: additivity R² {s1['test_r2_range'][0]:.3f}–{s1['test_r2_range'][1]:.3f}, {s1['test_interacting']} interacting pairs, "
   f"and (14, 692) as the strongest neuron in {s1['test_top692']}/{s1['test_n']} questions. The group frozen from the discovery "
@@ -359,7 +372,8 @@ P("A key question is whether the same shift can be produced by _different_ neuro
   "three of their four neurons; the disjoint alternatives in that chain are larger subsets identified through the margin.")
 P(f"Whether disjoint alternatives exist appears to depend on how confident the model is (Figure 4). Pooling the three models, "
   f"{mt['lo_disj']} of {mt['lo_n']} chains with m₀ < 4 have disjoint flipping subsets, against {mt['hi_disj']} of {mt['hi_n']} "
-  "chains with m₀ ≥ 4; in the confident chains every flipping subset shares neurons with every other. This is an exploratory "
+  f"chains with m₀ ≥ 4. In the other {mt['hi_n'] - mt['hi_disj']} confident chains every pair of flipping subsets shares at "
+  "least one neuron, so no disjoint alternative exists among the 12 selected neurons. This is an exploratory "
   "observation: the cut-off of 4 was chosen after inspecting the Qwen3-1.7B results, and margins and chains are confounded.")
 FIGURE("fig4_margin_vs_alternatives.png",
        "**Figure 4.** Number of disjoint pairs of answer-flipping subsets against the clean margin, one point per chain. "
@@ -415,7 +429,7 @@ P("**Uniqueness is not a property of the group alone.** Whether a group looks un
   "effect, or a flip), on the margin, and on the 12 neurons that were selected. Minimal sets are minimal only relative to "
   "the candidate group; they are not the model's circuit.")
 P("**A random control is necessary but not sufficient.** Study 1 produced a group that beats random neurons, is additive, "
-  "and transfers, yet carries nothing specific to the question. The control that exposed this was a content-matched one: "
+  "and transfers, yet showed no evidence of carrying anything specific to the tested questions. The control that exposed this was a content-matched one: "
   "resampling activations from other questions. In Study 2 the analogous checks (resampling, patching from other chains, "
   "cross-chain transfer) show that the groups are specific. We suggest that group demonstrations report (i) a "
   "content-matched control in addition to random neurons, (ii) the size distribution of sufficient subsets, and (iii) the "
@@ -431,6 +445,7 @@ BUL([
     "example uses a 32B model, which did not fit in the GPU memory available to us.",
     "**Candidate groups.** All uniqueness and necessity statements are relative to 12 neurons chosen by single-neuron and "
     "first-order criteria, which favour neurons that matter individually and may miss purely synergistic ones.",
+    "**Controls.** One layer-matched random group is drawn per question (fixed seed), not a distribution of random groups.",
     "**Single position.** Interventions act only on the last prompt token; computation at earlier positions is not tested.",
     "**Precision.** Study 2 runs in bfloat16 (noise floor up to "
     f"{max(own[m]['noise_range'][1] for m in MODELS):.2f} logits); small interactions may be invisible.",
@@ -445,7 +460,7 @@ P("A group intervention that changes a model's answer tells us that the group ma
   "needed or whether other neurons could do the same. Measuring every subset of 12-neuron groups in four models, we find that "
   "the answer-changing effect is usually carried by a few neurons, that disjoint parts of a group can each produce it when the "
   "model is not confident, that such groups transfer to rephrasings but not to other relations, and that a group can pass a "
-  "random-neuron control while carrying no content at all. Neuron groups are useful handles on model behaviour, but their "
+  "random-neuron control without any evidence of carrying question-specific content. Neuron groups are useful handles on model behaviour, but their "
   "internal structure has to be measured, not assumed.")
 
 H("Code and data")
@@ -480,6 +495,12 @@ REFS = [
     "Qwen Team. “Qwen3 technical report.” arXiv:2505.09388, 2025.",
     "A. Grattafiori et al. “The Llama 3 herd of models.” arXiv:2407.21783, 2024.",
     "Gemma Team. “Gemma 3 technical report.” arXiv:2503.19786, 2025.",
+    "M. Méloux, S. Maniu, F. Portet, M. Peyrard. “Everything, everywhere, all at once: Is mechanistic interpretability "
+    "identifiable?” ICLR, 2025.",
+    "X. Chen, M. Jin, J. Niu, Y. Yin, J. Zhao, B. Guo, D. N. Metaxas, Z. Wang, Y. Yue, G. Penn. “All circuits lead to "
+    "Rome: Rethinking functional anisotropy in circuit and sheaf discovery for LLMs.” ICML, PMLR 306, 2026.",
+    "A. Arora, Z. Wu, J. Steinhardt, S. Schwettmann. “Language model circuits are sparse in the neuron basis.” ICML, "
+    "PMLR 306, 2026.",
 ]
 for i, ref in enumerate(REFS, 1):
     p = d.add_paragraph()
