@@ -1,0 +1,13 @@
+# Adım 2 — resample + test bölümü (docs/adim2_tanimlar.md)
+model: Qwen/Qwen3-0.6B-Base
+dtype: float32
+device: cuda
+cache_dir: null                 # varsayılan Hugging Face önbelleği
+data: data/capitals.jsonl
+reference: data/reference_ab.jsonl
+pilot1_dir: results/pilot_20261106_102928
+min_margin: 1.0
+batch: 32
+seed: 20261106
+mem_fraction: 0.10
+mem_margin_mb: 600

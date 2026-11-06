@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+hf_cache/
+.home/
+.smoke/
+paper/out/
+results/*/
+!results/pilot_20261106_102928/
+!results/pilot1b_20261106_111357/
+!results/step2_20261106_112514/
+!results/competence_*/
+!results/chains_20261106_121202/
+!results/chains_Llama-3.2-1B_20261106_124956/
+!results/chains_gemma-3-1b-pt_20261106_125308/

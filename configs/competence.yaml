@@ -1,0 +1,10 @@
+# Yetkinlik kontrolü — nöron analizi yok
+models: [Qwen/Qwen3-0.6B-Base, Qwen/Qwen3-1.7B-Base]
+dtype: bfloat16                 # 1.7B float32 boş GPU belleğine sığmaz; doğru/yanlış kararı için bf16 yeterli
+device: cuda
+cache_dir: null                 # varsayılan Hugging Face önbelleği
+data: data/chains.jsonl
+max_new: 10
+seed: 20261106
+mem_fraction: 0.11              # ~4,9 GB; 1.7B bf16 ağırlık ~3,4 GB
+mem_margin_mb: 600

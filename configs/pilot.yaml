@@ -1,0 +1,15 @@
+# Makale A pilotu — 10 örnek × 1 model × 2 katman
+model: Qwen/Qwen3-0.6B-Base
+dtype: bfloat16
+lm_head_fp32: true                 # gövde bf16, logitler float32 (bf16 logit adımı ~0.06 küçük Δ'ları sıfırlıyordu)
+device: cuda
+cache_dir: null                 # varsayılan Hugging Face önbelleği
+data: data/capitals.jsonl
+layers: [14, 21]                   # 28 katmanın ortası ve son çeyreği; pilot sonrası katman taraması
+n_examples: 10
+min_margin: 1.0                    # müdahalesiz marj bu değerin altındaysa (ya da yanlışsa) örnek dışlanır
+tau_fracs: [0.3, 0.5, 0.7]         # birincil eşik %50 (marjın yarısının düşmesi); %30 ve %70 duyarlılık
+batch: 256
+seed: 20261106
+mem_fraction: 0.10                 # süreç başına GPU tavanı (paylaşılan GPU için); ayrılmış GPU'da 0.9 yapılabilir
+mem_margin_mb: 600                 # başlamak için tavanın üstünde boş kalması gereken pay

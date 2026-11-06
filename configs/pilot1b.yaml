@@ -1,0 +1,14 @@
+# Pilot 1b — pilot 1'in 12 adayıyla benzersizlik / etkileşim / transfer (docs/pilot1b_tanimlar.md)
+model: Qwen/Qwen3-0.6B-Base
+dtype: float32                          # küçük etkiler için tam float32 (bf16 toplu farkı ≤0,12 logit)
+lm_head_fp32: false
+device: cuda
+cache_dir: null                 # varsayılan Hugging Face önbelleği
+data: data/capitals.jsonl
+reference: data/reference_ab.jsonl
+pilot1_dir: results/pilot_20261106_102928
+min_margin: 1.0                        # varyantta müdahalesiz marj bunun altındaysa transfer değeri yorumlanmaz
+batch: 32                             # float32 KV önbelleği kopyaları için küçük toplu
+seed: 20261106
+mem_fraction: 0.10
+mem_margin_mb: 600
