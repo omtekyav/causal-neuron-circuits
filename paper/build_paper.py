@@ -12,7 +12,8 @@ import numpy as np
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
-from docx.shared import Cm, Pt, RGBColor
+from docx.oxml import OxmlElement
+from docx.shared import Cm, Inches, Pt, RGBColor
 
 from stats import competence, study1, study2
 
@@ -49,24 +50,53 @@ dl_all = np.vstack(list(dl.values()))
 med = lambda col: float(np.median(dl_all[:, col]))
 
 # ---------------------------------------------------------------- belge
+# arXiv ön baskı düzeni (NeurIPS stili): Letter, 5,5 inç metin sütunu, 1 inç üst/alt
 d = docx.Document()
 sec = d.sections[0]
-sec.page_width, sec.page_height = Cm(21.0), Cm(29.7)
+sec.page_width, sec.page_height = Inches(8.5), Inches(11)
 for side in ("left_margin", "right_margin"):
-    setattr(sec, side, Cm(2.4))
-sec.top_margin = sec.bottom_margin = Cm(2.2)
+    setattr(sec, side, Inches(1.5))
+sec.top_margin, sec.bottom_margin = Inches(1), Inches(1)
+TEXT_W = 13.97  # cm
 st = d.styles["Normal"]
 st.font.name = "Times New Roman"
 st.element.rPr.rFonts.set(qn("w:eastAsia"), "Times New Roman")
-st.font.size = Pt(10.5)
-st.paragraph_format.space_after = Pt(5)
-st.paragraph_format.line_spacing = 1.12
-for lvl, size in ((1, 13), (2, 11)):
+st.font.size = Pt(10)
+st.paragraph_format.space_after = Pt(5.5)
+st.paragraph_format.line_spacing = 1.0
+for lvl, size in ((1, 12), (2, 10)):
     h = d.styles[f"Heading {lvl}"]
     h.font.name, h.font.size, h.font.bold = "Times New Roman", Pt(size), True
     h.font.color.rgb = RGBColor(0, 0, 0)
     h.element.rPr.rFonts.set(qn("w:asciiTheme"), "")
-    h.paragraph_format.space_before, h.paragraph_format.space_after = Pt(10), Pt(4)
+    h.paragraph_format.space_before, h.paragraph_format.space_after = Pt(11 if lvl == 1 else 8), Pt(5)
+
+
+def rule(p, side, size_eighths):
+    """Paragrafın üstüne/altına yatay çizgi (başlık bloğu)."""
+    pPr = p._p.get_or_add_pPr()
+    bdr = pPr.find(qn("w:pBdr"))
+    if bdr is None:
+        bdr = OxmlElement("w:pBdr"); pPr.append(bdr)
+    e = OxmlElement(f"w:{side}")
+    for k, v in (("val", "single"), ("sz", str(size_eighths)), ("space", "8"), ("color", "000000")):
+        e.set(qn(f"w:{k}"), v)
+    bdr.append(e)
+
+
+def page_number_footer():
+    p = sec.footer.paragraphs[0]
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = p.add_run()
+    for tag, text in (("begin", None), (None, "PAGE"), ("end", None)):
+        if tag:
+            f = OxmlElement("w:fldChar"); f.set(qn("w:fldCharType"), tag); r._r.append(f)
+        else:
+            t = OxmlElement("w:instrText"); t.set(qn("xml:space"), "preserve"); t.text = text; r._r.append(t)
+    r.font.size = Pt(10)
+
+
+page_number_footer()
 
 
 def P(text: str, italic_lead: str | None = None, align=None, size=None):
@@ -112,7 +142,7 @@ def BUL(items):
 def FIGURE(name, caption, width_cm=15.5):
     p = d.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run().add_picture(str(FIG / name), width=Cm(width_cm))
+    p.add_run().add_picture(str(FIG / name), width=Cm(min(width_cm, TEXT_W)))
     c = d.add_paragraph()
     c.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     _runs(c, caption, size=9)
@@ -135,6 +165,8 @@ def TABLE(header, rows, caption, widths=None, size=8.5):
             cells[i].text = ""
             _runs(cells[i].paragraphs[0], str(v), size)
     if widths:
+        k = min(1.0, TEXT_W / sum(widths))   # dar sütuna sığdır
+        widths = [w * k for w in widths]
         for row in t.rows:
             for cell, w in zip(row.cells, widths):
                 cell.width = Cm(w)
@@ -149,14 +181,20 @@ def TABLE(header, rows, caption, widths=None, size=8.5):
 # ---------------------------------------------------------------- başlık
 t = d.add_paragraph(); t.alignment = WD_ALIGN_PARAGRAPH.CENTER
 r = t.add_run("Are Causal Neuron Circuits Unique and Transferable?"); r.bold = True; r.font.size = Pt(17)
-a = d.add_paragraph(); a.alignment = WD_ALIGN_PARAGRAPH.CENTER
-r = a.add_run("Ömer Tekin Yavuz"); r.font.size = Pt(11.5)
-a2 = d.add_paragraph(); a2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-r = a2.add_run("R&D and AI Engineer, Bursa, Turkey · omtekyav@gmail.com"); r.font.size = Pt(9.5); r.italic = True
+rule(t, "top", 32); rule(t, "bottom", 8)
+t.paragraph_format.space_before, t.paragraph_format.space_after = Pt(6), Pt(22)
+for text, size, bold, mono in (("Ömer Tekin Yavuz", 10, True, False), ("R&D and AI Engineer", 10, False, False),
+                               ("Bursa, Turkey", 10, False, False), ("omtekyav@gmail.com", 9.5, False, True)):
+    a = d.add_paragraph(); a.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    a.paragraph_format.space_after = Pt(0)
+    r = a.add_run(text); r.font.size = Pt(size); r.bold = bold
+    if mono:
+        r.font.name = "Courier New"
 
 ab = d.add_paragraph(); ab.alignment = WD_ALIGN_PARAGRAPH.CENTER
-r = ab.add_run("Abstract"); r.bold = True
-P(
+ab.paragraph_format.space_before, ab.paragraph_format.space_after = Pt(22), Pt(6)
+r = ab.add_run("Abstract"); r.bold = True; r.font.size = Pt(12)
+abstract = P(
     "Interpretability demonstrations often show that intervening on a group of neurons changes a model's answer. A recent "
     "example removes an 18-neuron group in Qwen3-32B and the model answers “Simba” instead of “Scar” to a two-hop Lion King "
     "riddle. Such a demonstration establishes that the group matters, but not how much of it is necessary, whether other groups "
@@ -173,7 +211,9 @@ P(
     "rarely necessary: a few neurons often suffice, and in many chains disjoint subsets each flip the answer on their own, "
     "in an exploratory analysis most often when the model is less confident. Group effects transfer to rephrasings of the same chain but nearly vanish on "
     "other chains. We study neuron-level causal interventions and alternative subsets; we do not recover the full connectivity "
-    "of circuits.", size=9.5)
+    "of circuits.", size=10)
+abstract.paragraph_format.left_indent = abstract.paragraph_format.right_indent = Inches(0.5)
+abstract.paragraph_format.space_after = Pt(14)
 
 # ---------------------------------------------------------------- 1
 H("1  Introduction")
@@ -193,8 +233,10 @@ P("Our central question is therefore: **when intervening on a group of neurons c
   "group is actually necessary?** We break it into three parts. _Uniqueness:_ can other, disjoint subsets produce the same "
   "change? _Interaction:_ are the neurons' effects additive, or do they depend on each other? _Transfer:_ does the same frozen "
   "group have the same effect on rephrasings of the question, and on other questions?")
-P("Because a group of 12 neurons has only 4,096 subsets, these questions can be answered exhaustively rather than by "
-  "sampling. We do this in two studies and three model families:")
+P("Méloux et al. have shown in small networks trained on toy tasks that mechanistic explanations need not be unique [16]. "
+  "We ask the corresponding question for pre-trained language models, at the level at which group demonstrations are "
+  "actually made: a specific, selected group of neurons. Because a group of 12 neurons has only 4,096 subsets, these "
+  "questions can be answered exhaustively rather than by sampling. We do this in two studies and three model families:")
 BUL([
     f"**Study 1 (capital questions, Qwen3-0.6B).** Twelve neurons selected by zero-ablation effect pass the usual random-neuron "
     f"control (−{s1['zero'][0]*100:.0f}% margin vs. ~0%), their effects are almost perfectly additive and they transfer to "
@@ -221,13 +263,16 @@ P("**Redundancy and self-repair.** Wang et al. found backup heads that take over
   "McGrath et al. described the Hydra effect, in which downstream layers compensate for ablated ones [7]. These results suggest "
   "that a single ablation can under- or over-state a component's role; our exhaustive subset analysis quantifies this for "
   "neuron groups.")
-P("**Non-uniqueness of explanations.** Méloux et al. showed, on small networks whose candidate explanations can be "
-  "enumerated, that mechanistic explanations are generally not identifiable: several circuits reproduce the same behaviour "
-  "and one circuit admits several interpretations [16]. Chen et al. found structurally different, faithful and sparse "
+P("**Non-uniqueness of explanations.** The work closest to ours in question is that of Méloux et al. [16], who ask whether "
+  "mechanistic interpretability is identifiable. On small networks trained on toy tasks, where every candidate explanation "
+  "can be enumerated, they show that explanations are generally not unique: several circuits reproduce the same behaviour "
+  "and one circuit admits several interpretations. Chen et al. found structurally different, faithful and sparse "
   "circuits for the same task in large language models, including an ultra-sparse one in which no single edge is "
-  "indispensable [17]. Our results agree that sufficient neuron groups need not be unique, and add two things: an "
-  "exhaustive measurement of every subset of a selected neuron group in pre-trained models of three families, and the "
-  "observation that alternatives are common when the model is unsure of its answer and rare when it is confident.")
+  "indispensable [17]. Our results agree that sufficient neuron groups need not be unique. They differ in setting and "
+  "scope: instead of enumerating explanations of a small network built for the purpose, we take pre-trained language "
+  "models of three families on natural-language questions and exhaustively test every subset of the specific neuron group "
+  "that a group demonstration would report. This turns the identifiability concern into a measurement on real models, and "
+  "adds the observation that alternatives are common when the model is unsure of its answer and rare when it is confident.")
 P("**Choosing the intervention.** Zhang and Nanda showed that conclusions from activation patching depend on the corruption "
   "method and the metric [8], and attribution patching approximates patching effects with gradients [9]. Our Study 1 is a "
   "concrete instance of the first point: zero ablation and resampling disagree completely about the same neurons.")
@@ -323,7 +368,8 @@ P("We wrote 20 two-hop chains in the spirit of the Lion King riddle: subject →
 TABLE(["Model", "Hop 1", "Hop 2", "Composed (phr. 1)", "Composed (phr. 2)", "All four correct", "Included"],
       [[m, frac(comp[m]["hop1"], 20), frac(comp[m]["hop2"], 20), frac(comp[m]["comp1"], 20), frac(comp[m]["comp2"], 20),
         frac(comp[m]["solved"], 20), own[m]["n"]] for m in MODELS],
-      "**Table 1.** Competence on the 20 chains (greedy generation). Included = chains entering the neuron analysis.")
+      "**Table 1.** Competence on the 20 chains (greedy generation). Included = chains entering the neuron analysis.",
+      widths=[2.7, 1.5, 1.5, 2.1, 2.1, 2.0, 1.6])
 H("5.2  Patching 12 neurons shifts the answer to the bridge", 2)
 P("For each chain we select a patching group (P): neurons whose activations, copied from the first-hop question (“Who is the "
   "main character of The Lion King?”, answer Simba), most reduce the margin of the composed question. For comparison we also "
