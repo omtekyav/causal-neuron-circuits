@@ -4,6 +4,7 @@ Kullanım: python -X utf8 build_paper.py  →  paper/out/neuron_circuits.docx (+
 """
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -21,6 +22,8 @@ HERE = Path(__file__).parent
 FIG = HERE / "figures"
 OUT = HERE / "out"
 OUT.mkdir(exist_ok=True)
+# Kurum satırı isteğe bağlı: AFFIL="<kurum adı>" verilirse ayrı dosyaya (neuron_circuits_affil) üretilir.
+AFFIL = os.environ.get("AFFIL", "").strip()
 
 s1, comp, s2 = study1(), competence(), study2()
 M = s2["models"]
@@ -183,8 +186,11 @@ t = d.add_paragraph(); t.alignment = WD_ALIGN_PARAGRAPH.CENTER
 r = t.add_run("Are Causal Neuron Circuits Unique and Transferable?"); r.bold = True; r.font.size = Pt(17)
 rule(t, "top", 32); rule(t, "bottom", 8)
 t.paragraph_format.space_before, t.paragraph_format.space_after = Pt(6), Pt(22)
-for text, size, bold, mono in (("Ömer Tekin Yavuz", 10, True, False), ("R&D and AI Engineer", 10, False, False),
-                               ("Bursa, Turkey", 10, False, False), ("omtekyav@gmail.com", 9.5, False, True)):
+author_lines = [("Ömer Tekin Yavuz", 10, True, False), ("R&D and AI Engineer", 10, False, False),
+                ("Bursa, Turkey", 10, False, False), ("omtekyav@gmail.com", 9.5, False, True)]
+if AFFIL:
+    author_lines.insert(2, (AFFIL, 10, False, False))
+for text, size, bold, mono in author_lines:
     a = d.add_paragraph(); a.alignment = WD_ALIGN_PARAGRAPH.CENTER
     a.paragraph_format.space_after = Pt(0)
     r = a.add_run(text); r.font.size = Pt(size); r.bold = bold
@@ -201,16 +207,16 @@ abstract = P(
     "could do the same, or whether the effect carries over to other inputs. We ask: when intervening on a group of neurons changes "
     "a model's answer, how much of that group is actually necessary? For every selected group we measure all 4,096 subsets of "
     "12 MLP neurons. On a two-alternative capital task (Qwen3-0.6B), zero-ablating 12 selected neurons lowers the answer margin "
-    f"by {s1['zero'][0]*100:.0f}% while random neurons do nothing, yet replacing the same neurons with their values from other "
-    "questions has no effect: their activations are nearly constant across questions, and we find no evidence that they "
+    f"by {s1['zero'][0]*100:.0f}% while random neurons barely change it, yet replacing the same neurons with their values from other "
+    "questions also barely changes it: their activations are nearly constant across questions, and we find no evidence that they "
     "carry question-specific content. On two-hop relation "
     f"chains, patching 12 neurons with activations from the first-hop question shifts the answer to the bridge entity "
-    f"(Scar → Simba) in {own['Qwen3-1.7B']['P_gen_bridge']}/{own['Qwen3-1.7B']['n']} chains for Qwen3-1.7B, "
+    f"(Scar → Simba): the greedy answer starts with the bridge in {own['Qwen3-1.7B']['P_gen_bridge']}/{own['Qwen3-1.7B']['n']} chains for Qwen3-1.7B, "
     f"{own['Llama-3.2-1B']['P_gen_bridge']}/{own['Llama-3.2-1B']['n']} for Llama-3.2-1B and "
     f"{own['Gemma-3-1B']['P_gen_bridge']}/{own['Gemma-3-1B']['n']} for Gemma-3-1B; random neurons never do. The full group is "
     "rarely necessary: a few neurons often suffice, and in many chains disjoint subsets each flip the answer on their own, "
-    "in an exploratory analysis most often when the model is less confident. Group effects transfer to rephrasings of the same chain but nearly vanish on "
-    "other chains. We study neuron-level causal interventions and alternative subsets; we do not recover the full connectivity "
+    "in an exploratory analysis most often when the model is less confident. Group effects transfer to rephrasings of the same chain but are much weaker "
+    "on other tested chains. We study neuron-level causal interventions and alternative subsets; we do not recover the full connectivity "
     "of circuits.", size=10)
 abstract.paragraph_format.left_indent = abstract.paragraph_format.right_indent = Inches(0.5)
 abstract.paragraph_format.space_after = Pt(14)
@@ -240,11 +246,11 @@ P("Méloux et al. have shown in small networks trained on toy tasks that mechani
 BUL([
     f"**Study 1 (capital questions, Qwen3-0.6B).** Twelve neurons selected by zero-ablation effect pass the usual random-neuron "
     f"control (−{s1['zero'][0]*100:.0f}% margin vs. ~0%), their effects are almost perfectly additive and they transfer to "
-    "rephrasings and new questions. Yet replacing them with values from _other_ questions changes nothing. A group can look "
+    "rephrasings and new questions. Yet replacing them with values from _other_ questions has almost no effect. A group can look "
     "causal, additive and transferable without any evidence of question-specific content on the tested questions.",
     "**Study 2 (two-hop relation chains, Qwen3-1.7B, Llama-3.2-1B, Gemma-3-1B).** Patching 12 neurons with activations from "
     "the first-hop question reproduces the Scar → Simba shift in most chains of all three families, random neurons never do, "
-    "and the effect is specific to the chain. Within the group, a few neurons usually suffice, and in many chains disjoint "
+    "and the frozen group has much smaller effects on other chains. Within the group, a few neurons usually suffice, and in many chains disjoint "
     "subsets each flip the answer.",
     "**A practical point for group demonstrations.** Exhaustive subset analysis is cheap at this scale, and a "
     "content-matched control (resampling or patching from other inputs) distinguishes generic from content-specific groups "
@@ -272,7 +278,7 @@ P("**Non-uniqueness of explanations.** The work closest to ours in question is t
   "scope: instead of enumerating explanations of a small network built for the purpose, we take pre-trained language "
   "models of three families on natural-language questions and exhaustively test every subset of the specific neuron group "
   "that a group demonstration would report. This turns the identifiability concern into a measurement on real models, and "
-  "adds the observation that alternatives are common when the model is unsure of its answer and rare when it is confident.")
+  "adds the observation that alternatives are common when the model is unsure of its answer and less common when it is confident.")
 P("**Choosing the intervention.** Zhang and Nanda showed that conclusions from activation patching depend on the corruption "
   "method and the metric [8], and attribution patching approximates patching effects with gradients [9]. Our Study 1 is a "
   "concrete instance of the first point: zero ablation and resampling disagree completely about the same neurons.")
@@ -297,11 +303,13 @@ H("3.2  Metric", 2)
 P("For a prompt with correct answer token c and alternative token w, the margin is m = logit(c) − logit(w). In Study 1, w is "
   "the other option letter; in Study 2, c is the first token of the final answer (“Scar”) and w the first token of the bridge "
   "entity (“Simba”). The effect of intervening on S is Δ(S) = m(clean) − m(S), reported relative to the clean margin m₀. "
-  "Δ/m₀ = 1 means the margin reaches zero; Δ/m₀ > 1 means the bridge is now preferred (the answer **flips**). We also record "
+  "Δ/m₀ = 1 means the margin reaches zero; Δ/m₀ > 1 means the bridge is now preferred (the answer **flips**). Exact ties, "
+  "which are frequent in bfloat16, are not counted as flips. We also record "
   "whether the most likely next token becomes the bridge and generate greedily under the intervention.")
 H("3.3  Selecting 12 candidate neurons", 2)
-P("All neurons of the relevant layers are first ranked by a first-order estimate of their effect, a·∂m/∂a for zero ablation "
-  "and (a_target − a_source)·∂m/∂a for patching [9]. The top 300 are then measured with real single-neuron interventions. The "
+P("All neurons of the relevant layers are ranked by a first-order estimate of their effect, a·∂m/∂a for zero ablation "
+  "and (a_target − a_source)·∂m/∂a for patching [9]. Real single-neuron interventions are then measured for every neuron of "
+  "layers 14 and 21 in Study 1, and for the top 300 by estimated effect in Study 2. In both studies the "
   "12 candidates are the 6 strongest by measured effect plus the next 6 by estimated effect, so that neurons that are weak "
   "alone are not excluded a priori. Candidates are selected on one prompt per question and frozen; rephrasings and other "
   "questions are never used for selection.")
@@ -310,7 +318,7 @@ P("For each frozen group we measure Δ(S) for all 2¹² = 4,096 subsets. From th
   "of Δ(S) by the sum of single-neuron effects (R² and slope through the origin); (ii) **pairwise interactions** "
   "I(i, j) = Δ({i, j}) − Δ({i}) − Δ({j}); (iii) **minimal sets**: an effective subset (Δ(S) above a threshold) none of whose "
   "proper subsets is effective; we use thresholds relative to the full group's effect (30/50/70%) and, in Study 2, the flip "
-  "threshold Δ(S) ≥ m₀; (iv) **alternatives**: pairs of minimal sets that share no neuron; and (v) **transfer**, by applying the "
+  "threshold Δ(S) > m₀; (iv) **alternatives**: pairs of minimal sets that share no neuron; and (v) **transfer**, by applying the "
   "same frozen group to other prompts.")
 H("3.5  Controls, noise and procedure", 2)
 P("Every result is compared with 12 random neurons matched in layer counts and receiving the same intervention (one random "
@@ -321,7 +329,8 @@ P("Every result is compared with 12 random neurons matched in layer counts and r
   f"({own['Qwen3-1.7B']['noise_range'][0]:.3f}–{max(own[m]['noise_range'][1] for m in MODELS):.3f} logits across models). "
   "Interaction thresholds are set to max(5% of the full effect, three times the noise floor). Before each step, definitions and "
   "decision rules were written down; Appendix B lists every change made after seeing data. Confidence intervals are 95% "
-  "bootstrap intervals over questions (chains), the unit of analysis.")
+  "bootstrap intervals over questions (chains). For transfer, the resampled units are valid rephrasings or ordered "
+  "source–target chain pairs, without adjustment for observations that share a chain.")
 
 # ---------------------------------------------------------------- 4
 H("4  Study 1: a causal-looking group without evidence of question-specific content")
@@ -339,18 +348,20 @@ P(f"**The group passes the usual checks.** Zero-ablating all 12 neurons lowers t
 P("**But we find no evidence of question-specific content.** Replacing the 12 neurons with their values from other capital questions "
   f"leaves the answer unchanged (same correct letter: {ci(s1['resample_same'])}; other correct letter: "
   f"{ci(s1['resample_diff'])}; mean of other capital questions: {ci(s1['task_mean'])}; Figure 1). The activations are nearly "
-  f"constant across questions: the median absolute deviation of a neuron from its across-question mean is "
+  f"constant across questions: the median absolute deviation of a neuron from its mean activation on the other discovery "
+  f"questions is "
   f"{s1['act_dev_median']:.2f}, against a median magnitude of {s1['act_mag_median']:.2f}. Zero ablation removes a nearly constant signal "
   "that the answer depends on; within the tested questions we see no sign that it removes information about "
   "Paris specifically.")
 P(f"**Replication on held-out questions.** Re-running the same selection procedure on the 10 test questions reproduces every "
   f"pattern: additivity R² {s1['test_r2_range'][0]:.3f}–{s1['test_r2_range'][1]:.3f}, {s1['test_interacting']} interacting pairs, "
   f"and (14, 692) as the strongest neuron in {s1['test_top692']}/{s1['test_n']} questions. The group frozen from the discovery "
-  f"questions lowers the margin on the new questions by {ci(s1['frozen_test_orig'])} (random: {ci(s1['frozen_test_random'])}).")
+  f"questions lowers the margin on the 10 new questions by {ci(s1['frozen_test_orig'])} (random group on the same prompts: "
+  f"{ci(s1['frozen_test_random'])}).")
 FIGURE("fig1_study1_interventions.png",
        "**Figure 1.** Study 1 (Qwen3-0.6B, capital questions). Relative margin drop when the 12 selected neurons are replaced, "
-       "median and 95% bootstrap CI over 10 questions. Only zero ablation has an effect; resampling the same neurons from other "
-       "questions does not.", 14.5)
+       "median and 95% bootstrap CI over 10 questions. Zero ablation produces by far the largest margin reduction; mean "
+       "ablation and resampling the same neurons from other questions have effects close to zero.", 14.5)
 P("Study 1 shows that the standard evidence (a large effect, a null random control, additivity, transfer) is compatible with a "
   "group that is irrelevant to the question's content. This motivated Study 2, which uses a task where the alternative answer "
   "is itself content: the bridge entity.")
@@ -377,31 +388,41 @@ P("For each chain we select a patching group (P): neurons whose activations, cop
   + ", ".join(f"{own[m]['P_flip']}/{own[m]['n']} chains ({m})" for m in MODELS)
   + "; under greedy generation the model then starts its answer with the bridge in "
   + ", ".join(f"{own[m]['P_gen_bridge']}/{own[m]['n']}" for m in MODELS)
-  + " chains. Twelve random neurons patched the same way never flip an answer (" + ", ".join(f"{own[m]['rand_flip']}/{own[m]['n']}" for m in MODELS)
+  + " chains. A generation counts as starting with the bridge only if its text begins with the bridge string "
+  "(case-insensitive); “Albert Einstein was born…” for the bridge Einstein is therefore not counted, which is why this "
+  "count can be lower than the number of flips. The prefix count measures how the continuation begins, not whether it "
+  "later mentions the correct answer as well. Twelve random neurons patched the same way never flip an answer (" + ", ".join(f"{own[m]['rand_flip']}/{own[m]['n']}" for m in MODELS)
   + "). Table 2 shows the generations for Qwen3-1.7B.")
 g = own["Qwen3-1.7B"]["gen"]
 ab_ = own["Qwen3-1.7B"]["answer_bridge"]
+cut = lambda s: s if len(s) <= 24 else s[:23].rstrip() + "…"
 TABLE(["Chain", "Answer → bridge", "No intervention", "P group patched", "Z group zeroed"],
-      [[c, f"{ab_[c][0]} → {ab_[c][1]}", g[c][0][:24], g[c][1][:24], g[c][2][:24]] for c in own["Qwen3-1.7B"]["chains"]],
-      "**Table 2.** Greedy generations of Qwen3-1.7B under intervention on the full 12-neuron group (first line).",
+      [[c, f"{ab_[c][0]} → {ab_[c][1]}", *[cut(g[c][k]) for k in range(3)]] for c in own["Qwen3-1.7B"]["chains"]],
+      "**Table 2.** Greedy generations of Qwen3-1.7B under intervention on the full 12-neuron group (first line; “…” marks "
+      "truncation for display).",
       widths=[2.2, 3.6, 3.4, 3.8, 3.4])
 P(f"The two groups act differently (Figure 2). Patching both raises the bridge's logit (median change {med(3):+.1f}) and "
   f"lowers the answer's logit ({med(2):+.1f}): it pushes the model _towards_ Simba as well as away from Scar. Zero ablation "
   f"lowers the answer's logit more strongly (median {med(0):+.1f}) and raises the bridge less ({med(1):+.1f}; in "
   f"Qwen3-1.7B the median bridge change is only {float(np.median(dl['Qwen3-1.7B'][:, 1])):+.1f}). In the Z group, values taken from another "
   f"chain are about as damaging as zeros (Qwen3-1.7B: zero {ci(own['Qwen3-1.7B']['Z_rel'])}, resample "
-  f"{ci(own['Qwen3-1.7B']['Z_resample'])}), unlike Study 1: these neurons do carry chain-specific values.")
+  f"{ci(own['Qwen3-1.7B']['Z_resample'])}): unlike in Study 1, these neurons are sensitive to replacement with values from "
+  "another chain. The same holds for the P group: patching it with activations from the composed question of a _different_ chain also "
+  "lowers the margin substantially (Δ/m₀ " + ", ".join(f"{ci(own[m]['P_other'])}" for m in MODELS) + "). Part of the "
+  "patching effect is therefore a disruption of the answer that does not require the matching bridge, and we do not claim "
+  "that the group encodes the bridge exclusively.")
 FIGURE("fig2_logit_decomposition.png",
        "**Figure 2.** Change in the answer logit (x) and the bridge logit (y) when the full 12-neuron group is intervened on, "
        "one point per chain and model. Patching from the first-hop question (filled) raises the bridge; zero ablation (open) "
        "mainly lowers the answer.", 10.5)
 
 H("5.3  How much of the group is necessary?", 2)
-P("Figure 3 answers the question “18 → 17 → 16 …” directly for the Lion King chain: for every number of patched neurons it "
+P("Figure 3 addresses a question left open by the Goodfire example, how far the group can be reduced, for the Lion King "
+  "chain: for every number of patched neurons it "
   "shows the distribution of effects over all subsets of that size. The full group is not necessary. The smallest "
   f"answer-flipping subset has {lk_min['Qwen3-1.7B']} neurons in Qwen3-1.7B, {lk_min['Llama-3.2-1B']} in Llama-3.2-1B and "
   f"{lk_min['Gemma-3-1B']} in Gemma-3-1B. The curves are smooth rather than step-like: effects accumulate neuron by neuron, "
-  "and which neurons are chosen matters (the band between the median and the strongest subset).")
+  "and which neurons are chosen matters (the width of the 5–95% band and the gap between the median and the strongest subset).")
 FIGURE("fig3_necessity_lion_king.png",
        "**Figure 3.** The Lion King chain. Δ/m₀ against the number of patched neurons, over all subsets of each size (band: "
        "5–95%, solid: median, dashed: strongest subset). Above the dotted line the model prefers “Simba”.", 16)
@@ -411,36 +432,42 @@ P("Across chains, the smallest flipping subset ranges over "
 
 H("5.4  Uniqueness: disjoint subsets that flip the answer", 2)
 P("A key question is whether the same shift can be produced by _different_ neurons. We count pairs of minimal flipping subsets "
-  "that share no neuron. Such pairs exist in "
-  + ", ".join(f"{own[m]['chains_disjoint']}/{own[m]['n']} chains ({m})" for m in MODELS)
+  "that share no neuron. Among the chains whose answer the full group flips, such pairs exist in "
+  + ", ".join(f"{own[m]['chains_disjoint']}/{own[m]['P_flip']} ({m})" for m in MODELS)
   + ". In these chains the 12-neuron group is not a single indispensable unit: two non-overlapping parts of it each suffice. "
-  "We note a caveat about our own examples: the four smallest Simba-producing subsets of Qwen3-1.7B on the Lion King chain share "
-  "three of their four neurons; the disjoint alternatives in that chain are larger subsets identified through the margin.")
-P(f"Whether disjoint alternatives exist appears to depend on how confident the model is (Figure 4). Pooling the three models, "
-  f"{mt['lo_disj']} of {mt['lo_n']} chains with m₀ < 4 have disjoint flipping subsets, against {mt['hi_disj']} of {mt['hi_n']} "
-  f"chains with m₀ ≥ 4. In the other {mt['hi_n'] - mt['hi_disj']} confident chains every pair of flipping subsets shares at "
-  "least one neuron, so no disjoint alternative exists among the 12 selected neurons. This is an exploratory "
+  "We note a caveat about our own examples: the four four-neuron subsets of Qwen3-1.7B that we checked by generation on the "
+  "Lion King chain (each produces “Simba”) all contain the same two neurons; disjoint alternatives are identified by the "
+  "margin criterion and were not checked by generation.")
+P(f"Whether disjoint alternatives exist appears to depend on how confident the model is (Figure 4). Pooling the three models "
+  f"and counting only the {mt['lo_n'] + mt['hi_n']} chains whose answer the full group flips, {mt['lo_disj']} of {mt['lo_n']} "
+  f"chains with m₀ < 4 have disjoint flipping subsets, against {mt['hi_disj']} of {mt['hi_n']} chains with m₀ ≥ 4. In the other "
+  f"{mt['hi_n'] - mt['hi_disj']} confident chains every pair of flipping subsets shares at least one neuron, so no disjoint "
+  f"alternative exists among the 12 selected neurons. The remaining {mt['noflip_n']} included chains are not flipped by the "
+  f"full group, and exhaustive enumeration finds no flipping subset in them either; all of them have "
+  f"m₀ ≥ {mt['noflip_m0_min']:.1f}. This is an exploratory "
   "observation: the cut-off of 4 was chosen after inspecting the Qwen3-1.7B results, and margins and chains are confounded.")
 FIGURE("fig4_margin_vs_alternatives.png",
-       "**Figure 4.** Number of disjoint pairs of answer-flipping subsets against the clean margin, one point per chain. "
-       "Low-confidence chains often have many disjoint alternatives; high-confidence chains rarely do. Exploratory.", 11)
+       "**Figure 4.** Number of disjoint pairs of minimal flipping subsets against the clean margin, one point per model "
+       "and chain. Disjoint alternatives are more common below the margin cut-off than above it. Chains whose answer the full "
+       "group does not flip are omitted. Exploratory.", 11)
 
 H("5.5  Interaction", 2)
-P("Within the P groups, effects are close to additive but saturate: R² of the additive fit is "
+P("Within the P groups, subset effects are well fit by a scaled additive model: R² of the additive fit is "
   + ", ".join(f"{ci(own[m]['r2'])} ({m})" for m in MODELS)
   + ", with slopes below one ("
   + ", ".join(f"{ci(own[m]['slope'])}" for m in MODELS)
-  + "), i.e. the full group does less than the sum of its parts. Pairs of neurons whose joint effect departs from additivity "
+  + "), i.e. on average subsets do less than the sum of their neurons' single effects. Pairs of neurons whose joint effect departs from additivity "
   "by more than the threshold are rare (" + ", ".join(f"{own[m]['n_pairs_interacting']} of {66*own[m]['n']} pairs ({m})" for m in MODELS)
   + "). We cannot exclude smaller interactions below the bfloat16 noise floor.")
 
 H("5.6  Transfer", 2)
-P("The frozen group behaves the same on other phrasings of the same chain: across all 4,095 subsets, Spearman correlations "
-  "with the original effects are " + ", ".join(f"{ci(own[m]['para_spearman'])} ({m})" for m in MODELS)
+P("The ranking of subset effects carries over to other phrasings of the same chain (those with m₀ ≥ 1): across all 4,095 "
+  "subsets, Spearman correlations with the original effects are " + ", ".join(f"{ci(own[m]['para_spearman'])} ({m})" for m in MODELS)
   + ". Applied to the composed question of a _different_ chain (patching from that chain's own first-hop question), the same "
   "neurons have little effect: Δ/m₀ " + ", ".join(f"{ci(own[m]['cross_rel'])} ({m})" for m in MODELS)
   + ", against " + ", ".join(f"{ci(own[m]['P_rel'])}" for m in MODELS)
-  + " on their own chain. The groups are specific to the relation, in contrast to Study 1.")
+  + " on their own chain. Unlike in Study 1, the selected groups act much more strongly on their own chain than on the "
+  "other tested chains.")
 
 H("6  The same pattern in three model families")
 P(f"To compare models on identical questions we restrict to the {len(s2['common'])} chains included for all three "
@@ -457,7 +484,8 @@ TABLE(["", *MODELS],
        ["Chains with disjoint flipping subsets", *[frac(com[m]["chains_disjoint"], com[m]["n"]) for m in MODELS]],
        ["Transfer: same chain, Spearman", *[ci(com[m]["para_spearman"]) for m in MODELS]],
        ["Transfer: other chains, Δ/m₀", *[ci(com[m]["cross_rel"]) for m in MODELS]]],
-      f"**Table 3.** The {len(s2['common'])} chains shared by all three models. Medians with 95% bootstrap CIs.",
+      f"**Table 3.** The {len(s2['common'])} chains shared by all three models. Medians with 95% bootstrap CIs. Fractions "
+      f"use all {len(s2['common'])} shared chains as denominator; subset sizes are listed only for chains the full group flips.",
       widths=[5.4, 3.7, 3.7, 3.7])
 FIGURE("fig5_cross_model.png",
        "**Figure 5.** Left: share of the shared chains whose answer flips when 12 selected (blue) or 12 random (gray) neurons "
@@ -469,15 +497,16 @@ P("**How much of the group is necessary?** In our experiments, rarely all of it.
   "produce the shift, effects accumulate smoothly, and in many chains two disjoint parts of the group can each produce it. A "
   "statement such as “removing these 18 neurons changes the answer” is therefore an existence proof for _a_ sufficient "
   "intervention, not a description of the necessary mechanism. The flip of an answer also depends on how far the model was "
-  "from flipping: when the margin is small, many small subsets cross the line; when it is large, only subsets containing a "
-  "shared core do.")
+  "from flipping: when the margin is small, many small subsets cross the line and disjoint ones are common; when it is "
+  "large, the flipping subsets usually overlap.")
 P("**Uniqueness is not a property of the group alone.** Whether a group looks unique depends on the threshold (half the "
   "effect, or a flip), on the margin, and on the 12 neurons that were selected. Minimal sets are minimal only relative to "
   "the candidate group; they are not the model's circuit.")
 P("**A random control is necessary but not sufficient.** Study 1 produced a group that beats random neurons, is additive, "
   "and transfers, yet showed no evidence of carrying anything specific to the tested questions. The control that exposed this was a content-matched one: "
-  "resampling activations from other questions. In Study 2 the analogous checks (resampling, patching from other chains, "
-  "cross-chain transfer) show that the groups are specific. We suggest that group demonstrations report (i) a "
+  "resampling activations from other questions. In Study 2 the same checks behave differently: values from other chains "
+  "disrupt the answer and the groups act much more weakly on other chains, so the groups are tied to their chain, although "
+  "patching from another chain shows that part of the effect is not specific to the bridge. We suggest that group demonstrations report (i) a "
   "content-matched control in addition to random neurons, (ii) the size distribution of sufficient subsets, and (iii) the "
   "clean margin, since it shapes every necessity and uniqueness conclusion.")
 P("**Relation to the Lion King example.** We reproduced the _kind_ of effect reported by Goodfire in three smaller models from "
@@ -505,7 +534,7 @@ H("9  Conclusion")
 P("A group intervention that changes a model's answer tells us that the group matters; it does not tell us how much of it is "
   "needed or whether other neurons could do the same. Measuring every subset of 12-neuron groups in four models, we find that "
   "the answer-changing effect is usually carried by a few neurons, that disjoint parts of a group can each produce it when the "
-  "model is not confident, that such groups transfer to rephrasings but not to other relations, and that a group can pass a "
+  "model is not confident, that such groups transfer to rephrasings but act much more weakly on other chains, and that a group can pass a "
   "random-neuron control without any evidence of carrying question-specific content. Neuron groups are useful handles on model behaviour, but their "
   "internal structure has to be measured, not assumed.")
 
@@ -582,9 +611,13 @@ BUL([
     "a measured noise floor.",
     "Study 2 definitions, inclusion rules and success criterion were written before the first run; the same frozen protocol was "
     "applied unchanged to Llama-3.2-1B and Gemma-3-1B. The margin cut-off (m₀ = 4) in Section 5.4 is post hoc.",
+    "After review, the counts of disjoint alternatives in Section 5.4 and Figure 4 were restricted to chains whose answer the "
+    "full group flips (exhaustive enumeration finds no flipping subset in the four excluded chains), and the subset flip "
+    "threshold was changed from Δ(S) ≥ m₀ to Δ(S) > m₀ so that exact ties are not counted, matching the full-group "
+    "definition. This changes the Qwen3-1.7B disjoint-alternative count from 4/10 to 3/10 and three minimal subset sizes.",
 ])
 
-path = OUT / "neuron_circuits.docx"
+path = OUT / ("neuron_circuits_affil.docx" if AFFIL else "neuron_circuits.docx")
 d.core_properties.title = "Are Causal Neuron Circuits Unique and Transferable?"
 d.core_properties.author = "Ömer Tekin Yavuz"
 d.save(path)

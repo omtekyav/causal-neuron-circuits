@@ -73,7 +73,7 @@ def study1() -> dict:
         "frozen_test_orig": b1(lambda x: not x["swapped"] and x["paraphrase"] == 0, "full_rel"),
         "frozen_test_para": b1(lambda x: not x["swapped"] and x["paraphrase"] > 0, "full_rel"),
         "frozen_test_swap": b1(lambda x: x["swapped"], "full_rel"),
-        "frozen_test_random": b1(lambda x: True, "random_full_rel"),
+        "frozen_test_random": b1(lambda x: not x["swapped"] and x["paraphrase"] == 0, "random_full_rel"),
     }
 
 
@@ -86,7 +86,8 @@ def competence() -> dict:
 
 
 def flip_info(d, m0):
-    ms = minimal_sets(d.astype(float), 12, m0)
+    # Flip = köprü önde (m(S) < 0, yani Δ(S) > m₀); bf16'da sık görülen tam eşitlik flip sayılmaz.
+    ms = minimal_sets(d.astype(float), 12, float(np.nextafter(m0, np.inf)))
     mins = ms["minimal"]
     return {"n_flip": ms["n_effective"], "min_size": ms["min_cardinality"],
             "disjoint": sum(1 for i, a in enumerate(mins) for b in mins[i + 1:] if a & b == 0)}
@@ -123,6 +124,7 @@ def study2() -> dict:
                 "n_para_valid": len(tr),
                 "cross_rel": ci([x["P_hop1_rel"] for x in cross]),
                 "flip": fi, "m0": {e["chain"]: e["m0"] for e in E},
+                "full_flip": {e["chain"]: e["cond"]["P_hop1"]["full_flipped"] for e in E},
                 "chains_disjoint": sum(v["disjoint"] > 0 for v in fi.values()),
                 "min_sizes": sorted(v["min_size"] for v in fi.values() if v["min_size"] is not None),
                 "r2": ci([e["analysis"]["P_hop1"]["additivity"]["r2"] for e in E if e["analysis"]["P_hop1"]["interpretable"]]),
@@ -138,9 +140,13 @@ def study2() -> dict:
                 "answer_bridge": {e["chain"]: (e["answer"], e["bridge"]) for e in E},
             }
         out["models"][m] = {"own": summ(R["included"]), "common": summ(common), "excluded": list(R["excluded"])}
-    allm = [(s["own"]["m0"][c], s["own"]["flip"][c]["disjoint"] > 0) for s in out["models"].values() for c in s["own"]["flip"]]
+    # Yalnız tam grubun cevabı çevirdiği zincirler; bu veride çevirmeyen dört zincirde enumerasyon hiçbir çeviren alt küme bulmuyor.
+    allm = [(s["own"]["m0"][c], s["own"]["flip"][c]["disjoint"] > 0) for s in out["models"].values()
+            for c in s["own"]["flip"] if s["own"]["full_flip"][c]]
+    noflip = [s["own"]["m0"][c] for s in out["models"].values() for c in s["own"]["flip"] if not s["own"]["full_flip"][c]]
     out["margin_trend"] = {"lo_n": sum(m0 < 4 for m0, _ in allm), "lo_disj": sum(d for m0, d in allm if m0 < 4),
-                           "hi_n": sum(m0 >= 4 for m0, _ in allm), "hi_disj": sum(d for m0, d in allm if m0 >= 4)}
+                           "hi_n": sum(m0 >= 4 for m0, _ in allm), "hi_disj": sum(d for m0, d in allm if m0 >= 4),
+                           "noflip_n": len(noflip), "noflip_m0_min": min(noflip, default=None)}
     out["deltas"] = {m: v[1] for m, v in data.items()}
     out["R"] = {m: v[0] for m, v in data.items()}
     return out

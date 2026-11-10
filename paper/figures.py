@@ -82,7 +82,7 @@ def fig_necessity(s2, chain="lk"):
         ax.fill_between(n, q[:, 0], q[:, 2], color=col, alpha=0.18, lw=0, label="5–95% of subsets")
         ax.plot(n, q[:, 1], color=col, lw=2, label="median subset")
         ax.plot(n, mx, color=col, lw=1, ls="--", label="strongest subset")
-        ax.axhline(1.0, color=INK2, lw=1, ls=":", label="answer flips (Δ/m₀ = 1)")
+        ax.axhline(1.0, color=INK2, lw=1, ls=":", label="zero margin (Δ/m₀ = 1); flips above")
         ax.set_title(f"{m} (m₀ = {e['m0']:.2f})")
         ax.set_xticks([0, 2, 4, 6, 8, 10, 12])
         ax.set_xlabel("Neurons patched (of 12)")
@@ -97,12 +97,13 @@ def fig_margin(s2):
     fig, ax = plt.subplots(figsize=(4.6, 2.9))
     for m, v in s2["models"].items():
         o = v["own"]
-        x = [o["m0"][c] for c in o["flip"]]
-        y = [np.log10(1 + o["flip"][c]["disjoint"]) for c in o["flip"]]
+        cs = [c for c in o["flip"] if o["full_flip"][c]]
+        x = [o["m0"][c] for c in cs]
+        y = [np.log10(1 + o["flip"][c]["disjoint"]) for c in cs]
         ax.scatter(x, y, s=30, marker=MODEL_MARK[m], color=MODEL_COLOR[m], edgecolor="white", linewidth=0.6, label=m, zorder=3)
     ax.axvline(4, color=INK2, lw=1, ls=":")
     ax.text(4.15, 3.35, "m₀ = 4 (chosen post hoc)", fontsize=7, color=INK2)
-    ax.set_yticks([0, 1, 2, 3], ["0", "10", "100", "1000"])
+    ax.set_yticks([np.log10(1 + n) for n in (0, 10, 100, 1000)], ["0", "10", "100", "1000"])
     ax.set_xlabel("Clean margin m₀ (answer vs. bridge logit)")
     ax.set_ylabel("Disjoint pairs of\nanswer-flipping subsets")
     ax.legend(fontsize=7.5, loc="upper right")
