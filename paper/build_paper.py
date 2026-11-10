@@ -211,7 +211,7 @@ abstract = P(
     "questions also barely changes it: their activations are nearly constant across questions, and we find no evidence that they "
     "carry question-specific content. On two-hop relation "
     f"chains, patching 12 neurons with activations from the first-hop question shifts the answer to the bridge entity "
-    f"(Scar → Simba): the greedy answer starts with the bridge in {own['Qwen3-1.7B']['P_gen_bridge']}/{own['Qwen3-1.7B']['n']} chains for Qwen3-1.7B, "
+    f"(from Scar to Simba): the greedy answer starts with the bridge in {own['Qwen3-1.7B']['P_gen_bridge']}/{own['Qwen3-1.7B']['n']} chains for Qwen3-1.7B, "
     f"{own['Llama-3.2-1B']['P_gen_bridge']}/{own['Llama-3.2-1B']['n']} for Llama-3.2-1B and "
     f"{own['Gemma-3-1B']['P_gen_bridge']}/{own['Gemma-3-1B']['n']} for Gemma-3-1B; random neurons never do. The full group is "
     "rarely necessary: a few neurons often suffice, and in many chains disjoint subsets each flip the answer on their own, "
