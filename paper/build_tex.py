@@ -172,6 +172,14 @@ TEX = r"""\documentclass[10pt]{article}
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{5.5pt}
 \renewcommand{\refname}{References}
+% Şekiller metinle aynı sayfada kalsın; yarı boş "yalnız şekil" sayfası oluşmasın
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.85}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
 
 \title{""" + esc(TITLE) + r"""}
 \author{""" + r" \\ ".join(author_lines) + r"""}
@@ -198,8 +206,7 @@ TEX = r"""\documentclass[10pt]{article}
 \begin{thebibliography}{99}\small
 """ + refs + r"""
 \end{thebibliography}
-
-\clearpage""" + "\n".join(L).split(r"\clearpage", 1)[1] + r"""
+""" + "\n".join(L).split(r"\clearpage", 1)[1] + r"""
 \end{document}
 """
 

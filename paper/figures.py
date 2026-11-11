@@ -69,7 +69,7 @@ def fig_logits(s2):
 
 
 def fig_necessity(s2, chain="lk"):
-    fig, axes = plt.subplots(1, 3, figsize=(6.6, 2.4), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(6.6, 2.7), sharey=True)
     sizes = np.array([bin(s).count("1") for s in range(4096)])
     for ax, (m, deltas) in zip(axes, s2["deltas"].items()):
         R = s2["R"][m]
@@ -87,8 +87,15 @@ def fig_necessity(s2, chain="lk"):
         ax.set_xticks([0, 2, 4, 6, 8, 10, 12])
         ax.set_xlabel("Neurons patched (of 12)")
     axes[0].set_ylabel("Δ/m₀")
-    axes[0].legend(fontsize=6.5, loc="lower right", handlelength=1.6)
-    fig.tight_layout()
+    # Açıklama eğrilerin üstüne binmesin: şeklin altında, renksiz (gri) örneklerle
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
+    handles = [Patch(color=INK2, alpha=0.25, label="5–95% of subsets"),
+               Line2D([], [], color=INK2, lw=2, label="median subset"),
+               Line2D([], [], color=INK2, lw=1, ls="--", label="strongest subset"),
+               Line2D([], [], color=INK2, lw=1, ls=":", label="zero margin (Δ/m₀ = 1); flips above")]
+    fig.legend(handles=handles, loc="lower center", ncol=4, fontsize=7, frameon=False, handlelength=1.8)
+    fig.tight_layout(rect=(0, 0.1, 1, 1))
     fig.savefig(OUT / "fig3_necessity_lion_king.png")
     plt.close(fig)
 
