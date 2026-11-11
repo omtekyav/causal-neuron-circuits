@@ -1,6 +1,6 @@
 # Are Causal Neuron Circuits Unique and Transferable?
 
-Code, data and results for the paper of the same name (Ömer Tekin Yavuz, 2026; arXiv link to be added).
+Code, data and results for the paper of the same name (Ömer Tekin Yavuz, 2026): [arXiv:2611.13885](https://arxiv.org/abs/2611.13885).
 
 **Question.** When intervening on a group of neurons changes a model's answer, how much of that group is actually
 necessary? Could a different group do the same? Does the group do the same thing on other inputs?
@@ -17,16 +17,20 @@ Goodfire's own neurons.
 |---|---|---|---|
 | Patching 12 neurons from the first-hop question flips the answer to the bridge (Scar → Simba), 7 shared chains | 6/7 | 6/7 | 6/7 |
 | 12 random neurons flip the answer | 0/7 | 0/7 | 0/7 |
-| Chains in which two **disjoint** subsets each flip the answer | 2/7 | 4/7 | 5/7 |
+| Chains in which two **disjoint** subsets each flip the answer | 1/7 | 4/7 | 5/7 |
 | Same group on other phrasings of the same chain (Spearman over 4,095 subsets) | 0.98 | 0.98 | 0.98 |
 | Same group on other chains (relative effect; ~1.5–1.8 on its own chain) | 0.01 | 0.02 | 0.03 |
 
-- **Necessity.** The full group is rarely necessary; a few neurons usually suffice (Lion King: 4, 8 and 6 neurons).
-- **Uniqueness (exploratory).** Disjoint alternatives are common when the model is less confident (13/15 chains with
-  clean margin < 4) and rare when it is confident (5/17); the cut-off was chosen after seeing data.
+- **Necessity.** The full group is rarely necessary; a few neurons usually suffice (Lion King: 4, 8 and 7 neurons).
+- **Uniqueness (exploratory).** Among chains whose answer the full group flips, disjoint alternatives are common when
+  the model is less confident (13/15 chains with clean margin < 4) and less common when it is confident (4/13); the
+  cut-off was chosen after seeing data. A subset counts as flipping only if the bridge is strictly preferred.
 - **A cautionary case (Study 1, Qwen3-0.6B, capital questions).** Twelve neurons selected by zero ablation lower the
-  margin by 27% (random neurons: 0%), add up almost perfectly and transfer to new questions — yet replacing them with
-  their values from other questions has no effect (0%). They carry a near-constant signal, not question-specific content.
+  margin by 27% (random neurons: about 0%), add up almost perfectly and transfer to new questions — yet replacing them
+  with their values from other questions has almost no effect (about 0%). Their activations are nearly constant across
+  questions, and we find no evidence that they carry question-specific content.
+- **Caveat (Study 2).** Patching the same group with activations from a different chain also lowers the margin
+  substantially, so part of the effect is not specific to the bridge.
 
 All numbers in the paper are computed from the files in `results/` by `paper/stats.py`.
 
@@ -95,9 +99,12 @@ Code and data: MIT (see `LICENSE`). Model weights are not included and keep thei
 
 ```
 @misc{yavuz2026neuroncircuits,
-  title  = {Are Causal Neuron Circuits Unique and Transferable?},
-  author = {Yavuz, {\"O}mer Tekin},
-  year   = {2026},
-  note   = {arXiv preprint (link to be added)}
+  title         = {Are Causal Neuron Circuits Unique and Transferable?},
+  author        = {Yavuz, {\"O}mer Tekin},
+  year          = {2026},
+  eprint        = {2611.13885},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG},
+  url           = {https://arxiv.org/abs/2611.13885}
 }
 ```
