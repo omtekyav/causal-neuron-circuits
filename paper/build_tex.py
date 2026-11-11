@@ -138,7 +138,8 @@ def TABLE(header, rows, caption, widths=None, size=8.5):
     cols = "".join(rf">{{\raggedright\arraybackslash}}p{{{w / tot:.3f}\dimexpr\linewidth-{2 * n}\tabcolsep\relax}}"
                    for w in widths)
     fs = r"\footnotesize" if size < 8.5 else r"\small"
-    lines = [r"\begin{table}[htbp]\centering" + fs,
+    place = "H" if lab.startswith("Table A") else "htbp"   # ek tablosu başlığının hemen altında kalsın
+    lines = [r"\begin{table}[" + place + r"]\centering" + fs,
              r"\caption*{\textbf{" + esc(lab) + "} " + md(cap) + "}",
              r"\begin{tabular}{" + cols + "}", r"\toprule",
              " & ".join(r"\textbf{" + md(h) + "}" for h in header) + r" \\", r"\midrule"]
@@ -164,6 +165,7 @@ TEX = r"""\documentclass[10pt]{article}
 \usepackage[letterpaper,textwidth=5.5in,textheight=9in,top=1in]{geometry}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{float}
 \usepackage{array}
 \usepackage{caption}
 \captionsetup{font=small,justification=justified,singlelinecheck=false}
@@ -186,13 +188,20 @@ TEX = r"""\documentclass[10pt]{article}
 \date{}
 
 \makeatletter
+% Word sürümüyle aynı görünüm: başlıklar 12/10 pt, özet gövde puntosunda, iki yandan 0,5 inç girintili
+\renewcommand{\section}{\@startsection{section}{1}{\z@}{-11pt plus -2pt}{5pt}{\normalfont\large\bfseries}}
+\renewcommand{\subsection}{\@startsection{subsection}{2}{\z@}{-8pt plus -2pt}{4pt}{\normalfont\normalsize\bfseries}}
+\renewenvironment{abstract}{%
+  {\centering\large\bfseries Abstract\par}\vspace{2pt}%
+  \list{}{\leftmargin=0.5in\rightmargin=0.5in\listparindent=0pt\itemindent=0pt\topsep=0pt\partopsep=0pt\parsep=0pt}\item\relax}%
+  {\endlist\vspace{4pt}}
 \renewcommand{\@maketitle}{%
-  \begin{center}
-  \rule{\linewidth}{4pt}\par\vspace{10pt}
-  {\LARGE\bfseries \@title\par}\vspace{8pt}
-  \rule{\linewidth}{1pt}\par\vspace{18pt}
-  \begin{tabular}[t]{c}\@author\end{tabular}\par
-  \end{center}\vspace{6pt}}
+  {\centering
+  \rule{\linewidth}{4pt}\par\vspace{8pt}
+  {\LARGE\bfseries \@title\par}\vspace{6pt}
+  \rule{\linewidth}{1pt}\par\vspace{16pt}
+  {\setlength{\tabcolsep}{0pt}\renewcommand{\arraystretch}{1.05}\begin{tabular}[t]{c}\@author\end{tabular}\par}}%
+  \vspace{14pt}}
 \makeatother
 
 \begin{document}
@@ -206,7 +215,8 @@ TEX = r"""\documentclass[10pt]{article}
 \begin{thebibliography}{99}\small
 """ + refs + r"""
 \end{thebibliography}
-""" + "\n".join(L).split(r"\clearpage", 1)[1] + r"""
+
+\clearpage""" + "\n".join(L).split(r"\clearpage", 1)[1] + r"""
 \end{document}
 """
 
